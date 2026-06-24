@@ -1,0 +1,16 @@
+# Web Framework
+fastapi
+uvicorn
+
+# Database
+sqlalchemy
+psycopg2-binary
+
+# AI / LangChain
+openai
+langchain
+langchain-core
+langchain-community 
+langchain-openai
+
+python-dotenv
