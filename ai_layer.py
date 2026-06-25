@@ -147,7 +147,10 @@ def nl_asset_query(user_query: str) -> str:
         sql_lower = sql_query.lower().strip()
 
         if not sql_lower.startswith("select"):
-            raise ValueError("Only SELECT statements are allowed.")
+            return {
+                "success": False,
+                "error": "Only SELECT statements are allowed."
+            }
 
         # 2. Execute SQL
         result = tool.invoke(sql_query)
@@ -161,7 +164,8 @@ def nl_asset_query(user_query: str) -> str:
     except Exception as e:
         return {
             "success": False,
-            "error": str(e)
+            "error": "Failed to execute generated query.",
+            "details": str(e)
         }
 
 

@@ -263,7 +263,7 @@ def natural_language_query(request: schemas.NLQueryRequest):
 
         return {
             "query": request.query,
-            "result": result
+            **result
         }
 
     except Exception as e:
