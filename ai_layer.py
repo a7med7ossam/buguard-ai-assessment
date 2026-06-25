@@ -85,13 +85,17 @@ def generate_sql_query(user_query: str, db: SQLDatabase) -> str:
         Database schema:
         {schema}
 
-        Convert the following natural language query into a valid SQL query.
-        Only return the SQL query. Do NOT explain anything.
+        Convert the following natural language query into a SQL SELECT query.
 
-        Use ONLY the tables and columns provided in the schema.
-        Do NOT invent table or column names.
+        Rules:
+        - ONLY generate SELECT statements
+        - NEVER generate INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE
+        - Use ONLY the tables and columns provided in the schema
+        - Do NOT invent table or column names
+        - Return ONLY SQL        
 
-        Query: {query}
+        Query:
+        {query}
         """
     )
 
@@ -109,17 +113,47 @@ def nl_asset_query(user_query: str) -> str:
     db = SQLDatabase.from_uri(os.getenv("DATABASE_URL"))
     tool = QuerySQLDatabaseTool(db=db)
 
-    if any(word in user_query.lower() for word in ["delete", "drop", "update", "insert"]):
-        return "Dangerous queries are not allowed."
+    FORBIDDEN_TERMS = [
+        "delete",
+        "drop",
+        "update",
+        "insert"
+    ]
+
+    if any(term in user_query.lower() for term in FORBIDDEN_TERMS):
+        return {
+            "success": False,
+            "error": "Dangerous queries are not allowed."
+        }
+    
+    AMBIGUOUS_TERMS = [
+        "risky",
+        "important",
+        "critical",
+        "interesting",
+        "dangerous"
+    ]
+
+    if any(term in user_query.lower() for term in AMBIGUOUS_TERMS):
+        return {
+            "success": False,
+            "error": "Query is ambiguous. Please specify measurable criteria."
+        }
 
     try:
         # 1. Generate SQL from natural language with schema awareness
         sql_query = generate_sql_query(user_query, db)
 
+        sql_lower = sql_query.lower().strip()
+
+        if not sql_lower.startswith("select"):
+            raise ValueError("Only SELECT statements are allowed.")
+
         # 2. Execute SQL
         result = tool.invoke(sql_query)
 
         return {
+                    "success": True,
                     "sql": sql_query,
                     "result": result
                 }
