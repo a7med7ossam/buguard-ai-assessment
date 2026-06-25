@@ -159,6 +159,9 @@ def nl_asset_query(user_query: str) -> str:
                 }
     
     except Exception as e:
-        return f"Error: {str(e)}"
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 

@@ -10,7 +10,6 @@ from database import engine, get_db
 import ai_layer
 from pydantic import BaseModel
 
-# Create the database tables
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Buguard Asset Management API")
@@ -30,9 +29,7 @@ def import_assets(assets: List[schemas.AssetImport], db: Session = Depends(get_d
                 models.Asset.value == asset_data.value
             ).first()
 
-            # -------------------------------
-            # EXISTING ASSET
-            # -------------------------------
+            
             if existing_asset:
                 existing_asset.last_seen = datetime.datetime.utcnow()
                 existing_asset.status = "active"
@@ -50,9 +47,7 @@ def import_assets(assets: List[schemas.AssetImport], db: Session = Depends(get_d
                 asset_obj = existing_asset
                 updated_count += 1
 
-            # -------------------------------
-            # NEW ASSET
-            # -------------------------------
+            
             else:
                 new_asset = models.Asset(
                     id=asset_data.id,
@@ -71,9 +66,7 @@ def import_assets(assets: List[schemas.AssetImport], db: Session = Depends(get_d
                 asset_obj = new_asset
                 imported_count += 1
 
-            # -------------------------------
-            # RELATIONSHIP HANDLING (FIXED)
-            # -------------------------------
+            
             if asset_data.parent:
                 parent_asset = db.query(models.Asset).filter(
                     models.Asset.id == asset_data.parent
@@ -110,20 +103,42 @@ def import_assets(assets: List[schemas.AssetImport], db: Session = Depends(get_d
     }
 
 
-# -------------------------------
-# AI ENDPOINTS
-# -------------------------------
+@app.get(
+    "/api/assets/{asset_id}/relationships",
+    response_model=schemas.AssetRelationshipsResponse
+)
+def get_asset_relationships(
+    asset_id: str,
+    db: Session = Depends(get_db)
+):
+    asset = db.query(models.Asset).filter(
+        models.Asset.id == asset_id
+    ).first()
 
-class AnalyzeRequest(BaseModel):
-    asset_id: str
+    if not asset:
+        raise HTTPException(
+            status_code=404,
+            detail="Asset not found"
+        )
 
+    relationships = db.query(models.Relationship).filter(
+        models.Relationship.from_asset_id == asset_id
+    ).all()
 
-class NLQueryRequest(BaseModel):
-    query: str
+    return {
+        "asset_id": asset_id,
+        "relationships": [
+            {
+                "type": rel.type,
+                "target_asset_id": rel.to_asset_id
+            }
+            for rel in relationships
+        ]
+    }
 
 
 @app.post("/api/analyze/enrich")
-def enrich_asset_endpoint(request: AnalyzeRequest, db: Session = Depends(get_db)):
+def enrich_asset_endpoint(request: schemas.AnalyzeRequest, db: Session = Depends(get_db)):
     asset = db.query(models.Asset).filter(models.Asset.id == request.asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
@@ -141,7 +156,7 @@ def enrich_asset_endpoint(request: AnalyzeRequest, db: Session = Depends(get_db)
 
 
 @app.post("/api/analyze/risk")
-def risk_score_endpoint(request: AnalyzeRequest, db: Session = Depends(get_db)):
+def risk_score_endpoint(request: schemas.AnalyzeRequest, db: Session = Depends(get_db)):
     asset = db.query(models.Asset).filter(models.Asset.id == request.asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
@@ -160,7 +175,7 @@ def risk_score_endpoint(request: AnalyzeRequest, db: Session = Depends(get_db)):
 
 @app.get("/api/analyze/report")
 def generate_inventory_report(db: Session = Depends(get_db)):
-    assets = db.query(models.Asset).limit(50).all()
+    assets = db.query(models.Asset).all()
 
     asset_list = [
         {"type": a.type, "value": a.value, "status": a.status}
@@ -172,7 +187,7 @@ def generate_inventory_report(db: Session = Depends(get_db)):
 
 
 @app.post("/api/analyze/query")
-def natural_language_query(request: NLQueryRequest):
+def natural_language_query(request: schemas.NLQueryRequest):
     if not request.query or not request.query.strip():
         return {"error": "Query cannot be empty"}
 
