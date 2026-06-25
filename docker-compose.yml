@@ -5,9 +5,9 @@ services:
     container_name: buguard_postgres
     restart: always
     environment:
-      POSTGRES_USER: buguard_user
-      POSTGRES_PASSWORD: supersecretpassword
-      POSTGRES_DB: buguard_assets
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:

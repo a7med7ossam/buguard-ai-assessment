@@ -1,6 +1,12 @@
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from enum import Enum
+
+
+class domain(Enum):
+    pass
+
 
 class AssetImport(BaseModel):
     id: str
