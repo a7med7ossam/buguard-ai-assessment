@@ -25,6 +25,18 @@ class AssetRelationshipsResponse(BaseModel):
     relationships: List[RelationshipResponse]
 
 
+class RelatedAsset(BaseModel):
+    id: str
+    type: str
+    value: str
+
+
+class AssetContextResponse(BaseModel):
+    asset: RelatedAsset
+    parents: List[RelatedAsset]
+    children: List[RelatedAsset]
+
+
 class AnalyzeRequest(BaseModel):
     asset_id: str
 
