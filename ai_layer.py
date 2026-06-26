@@ -1,4 +1,7 @@
 import os
+import json
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
@@ -7,13 +10,11 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_community.utilities import SQLDatabase
 from langchain_community.tools import QuerySQLDatabaseTool
 
-
 from dotenv import load_dotenv
 load_dotenv()
 
-# Initialize the Gemini model
-# Using flash for speed, temperature 0 for deterministic, factual outputs
 
+# Using flash for speed, temperature 0 for deterministic, factual outputs
 # 1. Initialize the LangChain ChatOpenAI wrapper, pointing it to Gemini!
 llm = ChatOpenAI(
     api_key=os.getenv("GEMINI_API_KEY"),
@@ -21,6 +22,13 @@ llm = ChatOpenAI(
     model="gemini-3-flash-preview", 
     temperature=0
 )
+
+
+def format_asset_data(data: dict) -> str:
+    """
+    Format asset data as pretty JSON for improved LLM readability.
+    """
+    return json.dumps(data, indent=2, default=str)
 
 
 # --- 1. Automated Enrichment & Categorization ---
@@ -33,15 +41,54 @@ class EnrichmentResult(BaseModel):
 enrichment_parser = PydanticOutputParser(pydantic_object=EnrichmentResult)
 
 enrichment_prompt = PromptTemplate(
-    template="Analyze the following cybersecurity asset and categorize it.\n{format_instructions}\nAsset details:\n{asset_data}\n",
-    input_variables=["asset_data"],
-    partial_variables={"format_instructions": enrichment_parser.get_format_instructions()}
+    template="""
+        You are a senior cybersecurity analyst specializing in Attack Surface Management (ASM).
+
+        Today's date:
+        {today}
+
+        Your task is to classify and enrich the following asset.
+
+        Rules:
+
+        - Use ONLY the supplied asset data.
+        - Never invent missing metadata.
+        - If information is unavailable, return "unknown".
+        - Determine:
+            • environment (prod, staging, dev, unknown)
+            • category
+            • criticality
+        - Consider:
+            • asset type
+            • hostname
+            • tags
+            • metadata
+            • naming conventions
+
+        Return ONLY the structured output requested.
+
+        {format_instructions}
+
+        Asset:
+
+        {asset_data}
+    """,
+    input_variables=["asset_data", "today"],
+    partial_variables={
+        "format_instructions": enrichment_parser.get_format_instructions()
+    }
 )
 
 def enrich_asset(asset_data: dict) -> dict:
     chain = enrichment_prompt | llm | enrichment_parser
-    result = chain.invoke({"asset_data": str(asset_data)})
+    result = chain.invoke(
+        {
+            "asset_data": format_asset_data(asset_data),
+            "today": datetime.utcnow().date().isoformat(),
+        }
+    )
     return result.dict()
+
 
 # --- 2. Risk Scoring & Summarization ---
 
@@ -53,27 +100,109 @@ class RiskScoreResult(BaseModel):
 risk_parser = PydanticOutputParser(pydantic_object=RiskScoreResult)
 
 risk_prompt = PromptTemplate(
-    template="Evaluate the cybersecurity risk of this asset. Look for expired certificates, exposed ports, or stale status.\n{format_instructions}\nAsset:\n{asset_data}\n",
-    input_variables=["asset_data"],
-    partial_variables={"format_instructions": risk_parser.get_format_instructions()}
+    template="""
+You are a senior cybersecurity risk analyst.
+
+Today's date:
+
+{today}
+
+Assess the cybersecurity risk of the supplied asset.
+
+Use ONLY the supplied data.
+
+Never invent vulnerabilities.
+
+When metadata contains dates:
+
+- compare them with today's date
+- determine whether certificates are:
+    - expired
+    - expiring within 30 days
+    - valid
+
+Consider:
+
+- asset status
+- exposed services
+- technology versions
+- certificate expiry
+- metadata
+- tags
+
+Assign:
+
+- risk score (1–10)
+- risk level
+- concise professional summary
+
+{format_instructions}
+
+Asset:
+
+{asset_data}
+""",
+    input_variables=["asset_data", "today"],
+    partial_variables={
+        "format_instructions": risk_parser.get_format_instructions()
+    }
 )
 
 def evaluate_risk(asset_data: dict) -> dict:
     chain = risk_prompt | llm | risk_parser
-    result = chain.invoke({"asset_data": str(asset_data)})
+    result = chain.invoke(
+        {
+            "asset_data": format_asset_data(asset_data),
+            "today": datetime.utcnow().date().isoformat(),
+        }
+    )    
     return result.dict()
+
 
 # --- 3. Report Generation ---
 
 def generate_report(inventory_data: list) -> str:
-    prompt = PromptTemplate.from_template(
-        "You are an expert security analyst. Review the following asset inventory and write a concise, professional executive summary detailing the overall attack surface risk. Do NOT invent data.\n\nInventory:\n{inventory}"
+    report_prompt = PromptTemplate(
+        template="""
+    You are preparing an executive Attack Surface Management report.
+
+    Today's date:
+
+    {today}
+
+    Review ONLY the supplied inventory.
+
+    Do not invent assets.
+
+    Summarize:
+
+    - inventory size
+    - asset distribution
+    - exposed services
+    - expired or expiring certificates
+    - stale assets
+    - notable risks
+    - recommendations
+
+    Write in a concise professional style suitable for a security manager.
+
+    Inventory:
+
+    {inventory}
+    """
     )
-    chain = prompt | llm
-    result = chain.invoke({"inventory": str(inventory_data)})
+
+    chain = report_prompt | llm
+    result = chain.invoke(
+        {
+            "inventory": json.dumps(inventory_data, indent=2),
+            "today": datetime.utcnow().date().isoformat(),
+        }
+    )    
     return result.content
 
 
+# --- 4. SQL Generation from NL ---
 
 def generate_sql_query(user_query: str, db: SQLDatabase) -> str:
     schema = db.get_table_info()
