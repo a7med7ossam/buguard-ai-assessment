@@ -6,6 +6,7 @@ import datetime
 import models
 import schemas
 from database import engine, get_db
+from enums import AssetType, AssetStatus
 
 import ai_layer
 from pydantic import BaseModel
@@ -32,7 +33,7 @@ def import_assets(assets: List[schemas.AssetImport], db: Session = Depends(get_d
             
             if existing_asset:
                 existing_asset.last_seen = datetime.datetime.utcnow()
-                existing_asset.status = "active"
+                existing_asset.status = AssetStatus.ACTIVE
 
                 # Merge tags
                 combined_tags = set(existing_asset.tags or [])

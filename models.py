@@ -1,5 +1,6 @@
-from sqlalchemy import Column, String, DateTime, JSON, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, String, DateTime, JSON, ForeignKey, UniqueConstraint, Enum
 from database import Base
+from enums import AssetType, AssetStatus
 import datetime
 import uuid
 
@@ -11,10 +12,30 @@ class Asset(Base):
         UniqueConstraint("type", "value", name="uq_asset_type_value"),
     )
 
+
     id = Column(String, primary_key=True, index=True)
-    type = Column(String, nullable=False) # domain, subdomain, ip_address, etc.
+
+    type = Column(
+        Enum(
+            AssetType,
+            name="asset_type_enum",
+            native_enum=False
+        ),
+        nullable=False
+    )
+
     value = Column(String, nullable=False) 
-    status = Column(String, default="active") # active, stale, archived
+
+    status = Column(
+        Enum(
+            AssetStatus,
+            name="asset_status_enum",
+            native_enum=False
+        ),
+        default=AssetStatus.ACTIVE,
+        nullable=False
+    )
+
     first_seen = Column(DateTime, default=datetime.datetime.utcnow)
     last_seen = Column(DateTime, default=datetime.datetime.utcnow)
     source = Column(String)

@@ -1,14 +1,13 @@
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-from enum import Enum
-
+from enums import AssetType, AssetStatus
 
 class AssetImport(BaseModel):
     id: str
-    type: str
+    type: AssetType
     value: str
-    status: Optional[str] = "active"
+    status: AssetStatus = AssetStatus.ACTIVE
     source: Optional[str] = "import"
     tags: Optional[List[str]] = []
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, alias="metadata")
