@@ -6,7 +6,7 @@ import datetime
 import models
 import schemas
 from database import engine, get_db
-from enums import AssetType, AssetStatus
+from enums import AssetType, AssetStatus, RelationshipType
 
 import ai_layer
 from pydantic import BaseModel
@@ -14,6 +14,49 @@ from pydantic import BaseModel
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Buguard Asset Management API")
+
+
+def create_relationship(
+    db: Session,
+    from_asset_id: str,
+    to_asset_id: str,
+    relationship_type: RelationshipType,
+):
+    """
+    Create a relationship if:
+    1. Target asset exists.
+    2. Same relationship doesn't already exist.
+    """
+
+    target = (
+        db.query(models.Asset)
+        .filter(models.Asset.id == to_asset_id)
+        .first()
+    )
+
+    if not target:
+        return
+
+    existing = (
+        db.query(models.Relationship)
+        .filter(
+            models.Relationship.from_asset_id == from_asset_id,
+            models.Relationship.to_asset_id == to_asset_id,
+            models.Relationship.type == relationship_type,
+        )
+        .first()
+    )
+
+    if existing:
+        return
+
+    db.add(
+        models.Relationship(
+            from_asset_id=from_asset_id,
+            to_asset_id=to_asset_id,
+            type=relationship_type,
+        )
+    )
 
 
 @app.post("/api/import")
@@ -69,24 +112,36 @@ def import_assets(assets: List[schemas.AssetImport], db: Session = Depends(get_d
 
             
             if asset_data.parent:
-                parent_asset = db.query(models.Asset).filter(
-                    models.Asset.id == asset_data.parent
-                ).first()
+                create_relationship(
+                    db=db,
+                    from_asset_id=asset_obj.id,
+                    to_asset_id=asset_data.parent,
+                    relationship_type=RelationshipType.SUBDOMAIN_OF,
+                )
 
-                if parent_asset:
-                    existing_rel = db.query(models.Relationship).filter(
-                        models.Relationship.from_asset_id == asset_obj.id,
-                        models.Relationship.to_asset_id == parent_asset.id,
-                        models.Relationship.type == "subdomain_of"
-                    ).first()
+            if asset_data.covers:
+                create_relationship(
+                    db=db,
+                    from_asset_id=asset_obj.id,
+                    to_asset_id=asset_data.covers,
+                    relationship_type=RelationshipType.CERTIFICATE_FOR,
+                )
 
-                    if not existing_rel:
-                        relationship = models.Relationship(
-                            from_asset_id=asset_obj.id,
-                            to_asset_id=parent_asset.id,
-                            type="subdomain_of"
-                        )
-                        db.add(relationship)
+            if asset_data.ip_address:
+                create_relationship(
+                    db=db,
+                    from_asset_id=asset_obj.id,
+                    to_asset_id=asset_data.ip_address,
+                    relationship_type=RelationshipType.SERVICE_ON,
+                )
+
+            for technology in asset_data.technologies:
+                create_relationship(
+                    db=db,
+                    from_asset_id=technology,
+                    to_asset_id=asset_obj.id,
+                    relationship_type=RelationshipType.TECHNOLOGY_USED_BY,
+                )
 
         except Exception as e:
             db.rollback()
@@ -122,19 +177,65 @@ def get_asset_relationships(
             detail="Asset not found"
         )
 
-    relationships = db.query(models.Relationship).filter(
-        models.Relationship.from_asset_id == asset_id
-    ).all()
+    outgoing_relationships = (
+        db.query(models.Relationship)
+        .filter(models.Relationship.from_asset_id == asset_id)
+        .all()
+    )
+
+    incoming_relationships = (
+        db.query(models.Relationship)
+        .filter(models.Relationship.to_asset_id == asset_id)
+        .all()
+    )
+
+    relationship_list = []
+
+    # Outgoing
+    for rel in outgoing_relationships:
+        target = (
+            db.query(models.Asset)
+            .filter(models.Asset.id == rel.to_asset_id)
+            .first()
+        )
+
+        if target:
+            relationship_list.append(
+                {
+                    "direction": "outgoing",
+                    "type": rel.type,
+                    "target_asset": {
+                        "id": target.id,
+                        "type": target.type,
+                        "value": target.value,
+                    },
+                }
+            )
+
+    # Incoming
+    for rel in incoming_relationships:
+        source = (
+            db.query(models.Asset)
+            .filter(models.Asset.id == rel.from_asset_id)
+            .first()
+        )
+
+        if source:
+            relationship_list.append(
+                {
+                    "direction": "incoming",
+                    "type": rel.type,
+                    "target_asset": {
+                        "id": source.id,
+                        "type": source.type,
+                        "value": source.value,
+                    },
+                }
+            )
 
     return {
         "asset_id": asset_id,
-        "relationships": [
-            {
-                "type": rel.type,
-                "target_asset_id": rel.to_asset_id
-            }
-            for rel in relationships
-        ]
+        "relationships": relationship_list,
     }
 
 

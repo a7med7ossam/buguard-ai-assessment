@@ -1,0 +1,77 @@
+[
+    {
+        "id": "domain-1",
+        "type": "domain",
+        "value": "example.com",
+        "status": "active",
+        "source": "scan",
+        "tags": ["root"],
+        "metadata": {}
+    },
+    {
+        "id": "subdomain-1",
+        "type": "subdomain",
+        "value": "api.example.com",
+        "status": "active",
+        "source": "scan",
+        "tags": ["prod"],
+        "metadata": {},
+        "parent": "domain-1"
+    },
+    {
+        "id": "ip-1",
+        "type": "ip_address",
+        "value": "203.0.113.10",
+        "status": "active",
+        "source": "scan",
+        "tags": [],
+        "metadata": {}
+    },
+    {
+        "id": "service-1",
+        "type": "service",
+        "value": "443/tcp",
+        "status": "active",
+        "source": "scan",
+        "tags": [],
+        "metadata": {
+            "banner": "nginx"
+        },
+        "ip_address": "ip-1"
+    },
+    {
+        "id": "cert-1",
+        "type": "certificate",
+        "value": "CN=api.example.com",
+        "status": "active",
+        "source": "scan",
+        "tags": [],
+        "metadata": {
+            "issuer": "Let's Encrypt",
+            "expires": "2025-01-02"
+        },
+        "covers": "subdomain-1"
+    },
+    {
+        "id": "tech-1",
+        "type": "technology",
+        "value": "Nginx 1.25",
+        "status": "active",
+        "source": "scan",
+        "tags": [],
+        "metadata": {},
+        "technologies": []
+    },
+    {
+        "id": "service-2",
+        "type": "service",
+        "value": "80/tcp",
+        "status": "active",
+        "source": "scan",
+        "tags": [],
+        "metadata": {},
+        "technologies": [
+            "tech-1"
+        ]
+    }
+]

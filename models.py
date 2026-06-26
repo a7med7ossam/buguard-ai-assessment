@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, DateTime, JSON, ForeignKey, UniqueConstraint, Enum
 from database import Base
-from enums import AssetType, AssetStatus
+from enums import AssetType, AssetStatus, RelationshipType
 import datetime
 import uuid
 
@@ -52,5 +52,11 @@ class Relationship(Base):
     from_asset_id = Column(String, ForeignKey("assets.id"), nullable=False)
     to_asset_id = Column(String, ForeignKey("assets.id"), nullable=False)
     
-    type = Column(String, nullable=False)  
-    
+    type = Column(
+        Enum(
+            RelationshipType,
+            name="relationship_type_enum",
+            native_enum=False
+        ),
+        nullable=False
+    )    
