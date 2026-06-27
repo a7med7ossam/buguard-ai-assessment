@@ -82,6 +82,27 @@ def create_relationship(
     )
 
 
+def merge_ai_enrichment(asset, enrichment):
+    """
+    Merge AI-generated enrichment into the asset metadata.
+    Existing metadata is preserved while enrichment fields are updated.
+    """
+
+    metadata = asset.metadata_ or {}
+
+    metadata.update(
+        {
+            "environment": enrichment["environment"],
+            "criticality": enrichment["criticality"],
+            "category": enrichment["category"],
+            "last_ai_enrichment": datetime.datetime.utcnow().isoformat()
+        }
+    )
+
+    asset.metadata_ = metadata
+
+
+
 @app.post("/api/import")
 def import_assets(assets: List[schemas.AssetImport], db: Session = Depends(get_db)):
     imported_count = 0
@@ -366,6 +387,12 @@ def enrich_asset_endpoint(request: schemas.AnalyzeRequest, db: Session = Depends
     }
 
     enrichment = ai_layer.enrich_asset(asset_dict)
+
+    merge_ai_enrichment(asset, enrichment)
+
+    db.commit()
+    db.refresh(asset)
+
     return {"asset_id": asset.id, "enrichment": enrichment}
 
 

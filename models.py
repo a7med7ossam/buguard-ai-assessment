@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, DateTime, JSON, ForeignKey, UniqueConstraint, Enum
+from sqlalchemy.ext.mutable import MutableDict
 from database import Base
 from enums import AssetType, AssetStatus, RelationshipType
 import datetime
@@ -40,7 +41,7 @@ class Asset(Base):
     last_seen = Column(DateTime, default=datetime.datetime.utcnow)
     source = Column(String)
     tags = Column(JSON, default=list) # Storing arrays as JSON is flexible
-    metadata_ = Column("metadata", JSON, default=dict) # Named metadata_ to avoid SQLAlchemy conflicts
+    metadata_ = Column("metadata", MutableDict.as_mutable(JSON), default=dict) # Named metadata_ to avoid SQLAlchemy conflicts
 
 
 

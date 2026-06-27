@@ -14,12 +14,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# Using flash for speed, temperature 0 for deterministic, factual outputs
+# model="gemini-3-flash-preview"
 # 1. Initialize the LangChain ChatOpenAI wrapper, pointing it to Gemini!
 llm = ChatOpenAI(
     api_key=os.getenv("GEMINI_API_KEY"),
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-    model="gemini-3-flash-preview", 
+    model="gemini-3.1-flash-lite", 
     temperature=0
 )
 
@@ -136,7 +136,7 @@ def enrich_asset(asset_data: dict) -> dict:
 class RiskScoreResult(BaseModel):
     risk_score: int = Field(description="Score from 1 to 10")
     risk_level: str = Field(description="Low, Medium, High, or Critical")
-    summary: str = Field(description="A concise 2-sentences summary of the risk")
+    summary: str = Field(description="A concise summary of the risk")
 
 risk_parser = PydanticOutputParser(pydantic_object=RiskScoreResult)
 
