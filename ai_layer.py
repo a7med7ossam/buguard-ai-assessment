@@ -31,6 +31,39 @@ def format_asset_data(data: dict) -> str:
     return json.dumps(data, indent=2, default=str)
 
 
+def add_lifecycle_context(asset_data: dict) -> dict:
+    """
+    Compute lifecycle information for assets that contain an 'expires' date
+    in metadata and add it to the payload sent to the LLM.
+    """
+    asset = dict(asset_data)  # shallow copy
+
+    metadata = dict(asset.get("metadata", {}))
+    expires = metadata.get("expires")
+
+    if not expires:
+        return asset
+
+    try:
+        expiry_date = datetime.strptime(expires, "%Y-%m-%d").date()
+        today = datetime.utcnow().date()
+
+        days_remaining = (expiry_date - today).days
+
+        asset["lifecycle"] = {
+            "days_until_expiration": days_remaining,
+            "expired": days_remaining < 0,
+            "expiring_soon": 0 <= days_remaining <= 30,
+        }
+
+    except ValueError:
+        asset["lifecycle"] = {
+            "date_parse_error": True
+        }
+
+    return asset
+
+
 # --- 1. Automated Enrichment & Categorization ---
 
 class EnrichmentResult(BaseModel):
@@ -48,6 +81,13 @@ enrichment_prompt = PromptTemplate(
         {today}
 
         Your task is to classify and enrich the following asset.
+
+        The supplied asset may already include computed lifecycle information
+        (e.g. expired, expiring_soon, days_until_expiration).
+
+        Use those computed values when present instead of recalculating them.
+
+        If lifecycle information is absent, reason from the metadata and today's date.
 
         Rules:
 
@@ -81,9 +121,10 @@ enrichment_prompt = PromptTemplate(
 
 def enrich_asset(asset_data: dict) -> dict:
     chain = enrichment_prompt | llm | enrichment_parser
+    prepared_asset = add_lifecycle_context(asset_data)
     result = chain.invoke(
         {
-            "asset_data": format_asset_data(asset_data),
+            "asset_data": format_asset_data(prepared_asset),
             "today": datetime.utcnow().date().isoformat(),
         }
     )
@@ -113,13 +154,12 @@ Use ONLY the supplied data.
 
 Never invent vulnerabilities.
 
-When metadata contains dates:
+The supplied asset may already include computed lifecycle information
+(e.g. expired, expiring_soon, days_until_expiration).
 
-- compare them with today's date
-- determine whether certificates are:
-    - expired
-    - expiring within 30 days
-    - valid
+Use those computed values when present instead of recalculating them.
+
+If lifecycle information is absent, reason from the metadata and today's date.
 
 Consider:
 
@@ -150,9 +190,10 @@ Asset:
 
 def evaluate_risk(asset_data: dict) -> dict:
     chain = risk_prompt | llm | risk_parser
+    prepared_asset = add_lifecycle_context(asset_data)
     result = chain.invoke(
         {
-            "asset_data": format_asset_data(asset_data),
+            "asset_data": format_asset_data(prepared_asset),
             "today": datetime.utcnow().date().isoformat(),
         }
     )    
