@@ -16,6 +16,29 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Buguard Asset Management API")
 
 
+def merge_metadata(existing: dict, incoming: dict) -> dict:
+    """
+    Recursively merge metadata dictionaries.
+    Nested dictionaries are merged instead of overwritten.
+    """
+    merged = existing.copy()
+
+    for key, value in incoming.items():
+        if (
+            key in merged
+            and isinstance(merged[key], dict)
+            and isinstance(value, dict)
+        ):
+            merged[key] = merge_metadata(
+                merged[key],
+                value
+            )
+        else:
+            merged[key] = value
+
+    return merged
+
+
 def create_relationship(
     db: Session,
     from_asset_id: str,
@@ -64,98 +87,120 @@ def import_assets(assets: List[schemas.AssetImport], db: Session = Depends(get_d
     imported_count = 0
     updated_count = 0
     skipped_count = 0
+    failed_records = []
 
     for asset_data in assets:
         try:
-            # 1. Check if asset exists (DEDUP by type + value)
-            existing_asset = db.query(models.Asset).filter(
-                models.Asset.type == asset_data.type,
-                models.Asset.value == asset_data.value
-            ).first()
+            with db.begin_nested():
 
-            
-            if existing_asset:
-                existing_asset.last_seen = datetime.datetime.utcnow()
-                existing_asset.status = AssetStatus.ACTIVE
+                # 1. Check if asset exists (DEDUP by type + value)
+                existing_asset = db.query(models.Asset).filter(
+                    models.Asset.type == asset_data.type,
+                    models.Asset.value == asset_data.value
+                ).first()
 
-                # Merge tags
-                combined_tags = set(existing_asset.tags or [])
-                combined_tags.update(asset_data.tags or [])
-                existing_asset.tags = list(combined_tags)
+                if existing_asset is None:
+                    asset_with_same_id = (
+                        db.query(models.Asset)
+                        .filter(models.Asset.id == asset_data.id)
+                        .first()
+                    )
 
-                # Merge metadata
-                current_metadata = existing_asset.metadata_ or {}
-                new_metadata = asset_data.metadata or {}
-                existing_asset.metadata_ = {**current_metadata, **new_metadata}
+                    if asset_with_same_id:
+                        raise ValueError(
+                            f"Asset ID '{asset_data.id}' is already used by asset "
+                            f"'{asset_with_same_id.value}' ({asset_with_same_id.type})."
+                        )            
 
-                asset_obj = existing_asset
-                updated_count += 1
 
-            
-            else:
-                new_asset = models.Asset(
-                    id=asset_data.id,
-                    type=asset_data.type,
-                    value=asset_data.value,
-                    status=asset_data.status,
-                    first_seen=datetime.datetime.utcnow(),
-                    last_seen=datetime.datetime.utcnow(),
-                    source=asset_data.source,
-                    tags=asset_data.tags,
-                    metadata_=asset_data.metadata
-                )
-                db.add(new_asset)
-                db.flush()
+                if existing_asset:
+                    existing_asset.last_seen = datetime.datetime.utcnow()
+                    existing_asset.status = AssetStatus.ACTIVE
+
+                    # Merge tags
+                    combined_tags = set(existing_asset.tags or [])
+                    combined_tags.update(asset_data.tags or [])
+                    existing_asset.tags = list(combined_tags)
+
+                    # Merge metadata
+                    current_metadata = existing_asset.metadata_ or {}
+                    new_metadata = asset_data.metadata or {}
+                    existing_asset.metadata_ = merge_metadata(current_metadata, new_metadata)
+
+                    asset_obj = existing_asset
+                    updated_count += 1
+
                 
-                asset_obj = new_asset
-                imported_count += 1
+                else:
+                    new_asset = models.Asset(
+                        id=asset_data.id,
+                        type=asset_data.type,
+                        value=asset_data.value,
+                        status=asset_data.status,
+                        first_seen=datetime.datetime.utcnow(),
+                        last_seen=datetime.datetime.utcnow(),
+                        source=asset_data.source,
+                        tags=asset_data.tags,
+                        metadata_=asset_data.metadata
+                    )
+                    db.add(new_asset)
+                    db.flush()
+                    
+                    asset_obj = new_asset
+                    imported_count += 1
 
-            
-            if asset_data.parent:
-                create_relationship(
-                    db=db,
-                    from_asset_id=asset_obj.id,
-                    to_asset_id=asset_data.parent,
-                    relationship_type=RelationshipType.SUBDOMAIN_OF,
-                )
+                
+                if asset_data.parent:
+                    create_relationship(
+                        db=db,
+                        from_asset_id=asset_obj.id,
+                        to_asset_id=asset_data.parent,
+                        relationship_type=RelationshipType.SUBDOMAIN_OF,
+                    )
 
-            if asset_data.covers:
-                create_relationship(
-                    db=db,
-                    from_asset_id=asset_obj.id,
-                    to_asset_id=asset_data.covers,
-                    relationship_type=RelationshipType.CERTIFICATE_FOR,
-                )
+                if asset_data.covers:
+                    create_relationship(
+                        db=db,
+                        from_asset_id=asset_obj.id,
+                        to_asset_id=asset_data.covers,
+                        relationship_type=RelationshipType.CERTIFICATE_FOR,
+                    )
 
-            if asset_data.ip_address:
-                create_relationship(
-                    db=db,
-                    from_asset_id=asset_obj.id,
-                    to_asset_id=asset_data.ip_address,
-                    relationship_type=RelationshipType.SERVICE_ON,
-                )
+                if asset_data.ip_address:
+                    create_relationship(
+                        db=db,
+                        from_asset_id=asset_obj.id,
+                        to_asset_id=asset_data.ip_address,
+                        relationship_type=RelationshipType.SERVICE_ON,
+                    )
 
-            for technology in asset_data.technologies:
-                create_relationship(
-                    db=db,
-                    from_asset_id=technology,
-                    to_asset_id=asset_obj.id,
-                    relationship_type=RelationshipType.TECHNOLOGY_USED_BY,
-                )
+                for technology in asset_data.technologies:
+                    create_relationship(
+                        db=db,
+                        from_asset_id=technology,
+                        to_asset_id=asset_obj.id,
+                        relationship_type=RelationshipType.TECHNOLOGY_USED_BY,
+                    )
 
         except Exception as e:
-            db.rollback()
             skipped_count += 1
-            print(f"Skipped record {asset_data.id} due to error: {e}")
 
-    # ✅ Commit once after loop
+            failed_records.append(
+                    {
+                        "asset_id": asset_data.id,
+                        "reason": str(e)
+                    }
+            )
+
+    # Commit once after loop
     db.commit()
 
     return {
         "message": "Import complete",
         "new_assets": imported_count,
         "updated_assets": updated_count,
-        "skipped_records": skipped_count
+        "skipped_records": skipped_count,
+        "failed_records": failed_records
     }
 
 
