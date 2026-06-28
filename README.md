@@ -157,41 +157,14 @@ setup to a single command. For production this would move to Alembic migrations.
 
 ---
 
-## 6. Running the tests
-
-The unit tests cover the deterministic core logic and run **without** a database
-or an API key.
-
-```bash
-pip install -r requirements.txt -r requirements-dev.txt
-pytest
-```
-
-Or inside the running container:
-
-```bash
-docker compose exec app pytest
-```
-
-Covered:
-- **Metadata merge** — recursive merge, leaf conflict resolution, no mutation of
-  the original (the *conflicting-data* edge case).
-- **Lifecycle computation** — expired vs. expiring-soon vs. far-future, and the
-  malformed-date path (the *certificate/lifecycle dates* edge case).
-- **NL-query guardrails** — forbidden write verbs and ambiguous terms are
-  rejected; well-formed read queries pass (the *ambiguous/out-of-scope query*
-  edge case).
-
----
-
-## 7. Example prompts and outputs (AI track)
+## 6. Example prompts and outputs (AI track)
 
 > Outputs below are representative responses over `data/sample_assets.json`.
 > Exact LLM wording varies; the structure and grounding do not. In that
 > dataset, `cert-1` (`CN=api.example.com`, issued by Let's Encrypt) expires
 > `2025-01-02` — already expired relative to today.
 
-### 7.1 Automated enrichment & categorization
+### 6.1 Automated enrichment & categorization
 
 **Request**
 ```bash
@@ -219,7 +192,7 @@ The `prod` classification is grounded in the asset's `prod` tag and the `api.`
 hostname convention; the enrichment fields are also written back into the
 asset's metadata (with a `last_ai_enrichment` timestamp).
 
-### 7.2 Risk scoring & summarization
+### 6.2 Risk scoring & summarization
 
 **Request**
 ```bash
@@ -247,7 +220,7 @@ The "expired" judgement comes from the Python-computed `lifecycle` block, not
 the model guessing — so it stays correct regardless of the model's own sense of
 the date.
 
-### 7.3 Natural-language query
+### 6.3 Natural-language query
 
 **Request**
 ```bash
@@ -306,7 +279,7 @@ curl -X 'POST' \
 }
 ```
 
-### 7.4 Natural-language report generation
+### 6.4 Natural-language report generation
 
 **Request**
 ```bash
@@ -356,9 +329,9 @@ The following services are currently active and exposed:
 
 ---
 
-## 8. Edge cases handled
+## 7. Edge cases handled
 
-| Edge case (Section 7) | How it's handled |
+| Edge case (Section 6) | How it's handled |
 |---|---|
 | Idempotent imports | Dedup on `(type, value)`; re-import updates `last_seen` + merges, never duplicates |
 | Conflicting data | Recursive metadata merge (nested-merge, leaf last-write-wins); tags unioned |
@@ -369,7 +342,7 @@ The following services are currently active and exposed:
 
 ---
 
-## 9. What I'd do next
+## 8. What I'd do next
 
 - Enhance the response format for the `natural-language query endpoint` to be more readable
 - Turn the analysis layer into an agent that calls the API as tools, and add an
