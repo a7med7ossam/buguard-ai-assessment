@@ -6,10 +6,10 @@ import datetime
 import models
 import schemas
 from database import engine, get_db
-from enums import AssetType, AssetStatus, RelationshipType
+from enums import AssetStatus, RelationshipType
 
 import ai_layer
-from pydantic import BaseModel
+#from pydantic import BaseModel
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -302,73 +302,6 @@ def get_asset_relationships(
     return {
         "asset_id": asset_id,
         "relationships": relationship_list,
-    }
-
-
-@app.get(
-    "/api/assets/{asset_id}/context",
-    response_model=schemas.AssetContextResponse
-)
-def get_asset_context(
-    asset_id: str,
-    db: Session = Depends(get_db)
-):
-    asset = db.query(models.Asset).filter(
-        models.Asset.id == asset_id
-    ).first()
-
-    if not asset:
-        raise HTTPException(
-            status_code=404,
-            detail="Asset not found"
-        )
-
-    # Parents
-    parent_relationships = db.query(models.Relationship).filter(
-        models.Relationship.from_asset_id == asset_id
-    ).all()
-
-    parents = []
-
-    for rel in parent_relationships:
-        parent = db.query(models.Asset).filter(
-            models.Asset.id == rel.to_asset_id
-        ).first()
-
-        if parent:
-            parents.append({
-                "id": parent.id,
-                "type": parent.type,
-                "value": parent.value
-            })
-
-    # Children
-    child_relationships = db.query(models.Relationship).filter(
-        models.Relationship.to_asset_id == asset_id
-    ).all()
-
-    children = []
-
-    for rel in child_relationships:
-        child = db.query(models.Asset).filter(
-            models.Asset.id == rel.from_asset_id
-        ).first()
-
-        if child:
-            children.append({
-                "id": child.id,
-                "type": child.type,
-                "value": child.value
-            })
-
-    return {
-        "asset": {
-            "id": asset.id,
-            "type": asset.type,
-            "value": asset.value
-        },
-        "parents": parents,
-        "children": children
     }
 
 

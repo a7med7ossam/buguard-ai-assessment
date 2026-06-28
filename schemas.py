@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
-from datetime import datetime
 from enums import AssetType, AssetStatus, RelationshipType
 
 
@@ -23,8 +22,6 @@ class AssetImport(BaseModel):
     ip_address: Optional[str] = None
     technologies: List[str] = Field(default_factory=list)
 
-    #relationships: List[AssetRelationshipImport] = []
-
 
 class RelatedAsset(BaseModel):
     id: str
@@ -41,12 +38,6 @@ class RelationshipResponse(BaseModel):
 class AssetRelationshipsResponse(BaseModel):
     asset_id: str
     relationships: List[RelationshipResponse]
-
-
-class AssetContextResponse(BaseModel):
-    asset: RelatedAsset
-    parents: List[RelatedAsset]
-    children: List[RelatedAsset]
 
 
 class AnalyzeRequest(BaseModel):
