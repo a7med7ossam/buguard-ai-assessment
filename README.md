@@ -371,7 +371,7 @@ The following services are currently active and exposed:
 
 ## 9. What I'd do next
 
-- Enhance the response format for the qurey endpoint to be more readable
+- Enhance the response format for the `natural-language query endpoint` to be more readable
 - Turn the analysis layer into an agent that calls the API as tools, and add an
   output-quality evaluation harness.
 - Cache enrichment/risk results to cut LLM calls on unchanged assets.
