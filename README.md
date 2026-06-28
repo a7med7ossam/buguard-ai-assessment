@@ -273,9 +273,13 @@ curl -X 'POST' \
 **Guardrails in action**
 ```bash
 # Ambiguous adjective -> rejected before any LLM call
-curl -X POST http://localhost:8000/api/analyze/query \
-  -H "Content-Type: application/json" \
-  -d '{"query": "show me the risky assets"}'
+curl -X 'POST' \
+  'http://localhost:8000/api/analyze/query' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "query": "show me the risky assets"
+}'
 ```
 ```json
 {
@@ -286,9 +290,13 @@ curl -X POST http://localhost:8000/api/analyze/query \
 ```
 ```bash
 # Write verb -> rejected
-curl -X POST http://localhost:8000/api/analyze/query \
-  -H "Content-Type: application/json" \
-  -d '{"query": "delete all stale assets"}'
+curl -X 'POST' \
+  'http://localhost:8000/api/analyze/query' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "query": "delete all stale assets"
+}'
 ```
 ```json
 {
