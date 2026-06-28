@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List
 import datetime
@@ -346,17 +347,28 @@ def risk_score_endpoint(request: schemas.AnalyzeRequest, db: Session = Depends(g
     return {"asset_id": asset.id, "risk_assessment": risk_assessment}
 
 
-@app.get("/api/analyze/report")
+@app.get(
+    "/api/analyze/report",
+    response_class=Response,
+)
 def generate_inventory_report(db: Session = Depends(get_db)):
     assets = db.query(models.Asset).all()
 
     asset_list = [
-        {"type": a.type, "value": a.value, "status": a.status}
+        {
+            "type": a.type,
+            "value": a.value,
+            "status": a.status,
+        }
         for a in assets
     ]
 
     report = ai_layer.generate_report(asset_list)
-    return {"report": report}
+
+    return Response(
+        content=report,
+        media_type="text/markdown",
+    )
 
 
 @app.post("/api/analyze/query")
