@@ -1,6 +1,6 @@
 import os
 import json
-from datetime import datetime
+import datetime
 
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
@@ -45,8 +45,8 @@ def add_lifecycle_context(asset_data: dict) -> dict:
         return asset
 
     try:
-        expiry_date = datetime.strptime(expires, "%Y-%m-%d").date()
-        today = datetime.utcnow().date()
+        expiry_date = datetime.datetime.strptime(expires, "%Y-%m-%d").date()
+        today = datetime.datetime.now(datetime.UTC).date()
 
         days_remaining = (expiry_date - today).days
 
@@ -125,7 +125,7 @@ def enrich_asset(asset_data: dict) -> dict:
     result = chain.invoke(
         {
             "asset_data": format_asset_data(prepared_asset),
-            "today": datetime.utcnow().date().isoformat(),
+            "today": datetime.datetime.now(datetime.UTC).date().isoformat(),
         }
     )
     return result.dict()
@@ -194,7 +194,7 @@ def evaluate_risk(asset_data: dict) -> dict:
     result = chain.invoke(
         {
             "asset_data": format_asset_data(prepared_asset),
-            "today": datetime.utcnow().date().isoformat(),
+            "today": datetime.datetime.now(datetime.UTC).date().isoformat(),
         }
     )    
     return result.dict()
@@ -237,7 +237,7 @@ def generate_report(inventory_data: list) -> str:
     result = chain.invoke(
         {
             "inventory": json.dumps(inventory_data, indent=2),
-            "today": datetime.utcnow().date().isoformat(),
+            "today": datetime.datetime.now(datetime.UTC).date().isoformat(),
         }
     )    
     return result.content

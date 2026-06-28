@@ -37,8 +37,8 @@ class Asset(Base):
         nullable=False
     )
 
-    first_seen = Column(DateTime, default=datetime.datetime.utcnow)
-    last_seen = Column(DateTime, default=datetime.datetime.utcnow)
+    first_seen = Column(DateTime, default=lambda: datetime.datetime.now(datetime.UTC))
+    last_seen = Column(DateTime, default=lambda: datetime.datetime.now(datetime.UTC))
     source = Column(String)
     tags = Column(JSON, default=list) # Storing arrays as JSON is flexible
     metadata_ = Column("metadata", MutableDict.as_mutable(JSON), default=dict) # Named metadata_ to avoid SQLAlchemy conflicts

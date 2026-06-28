@@ -9,7 +9,6 @@ from database import engine, get_db
 from enums import AssetStatus, RelationshipType
 
 import ai_layer
-#from pydantic import BaseModel
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -95,7 +94,7 @@ def merge_ai_enrichment(asset, enrichment):
             "environment": enrichment["environment"],
             "criticality": enrichment["criticality"],
             "category": enrichment["category"],
-            "last_ai_enrichment": datetime.datetime.utcnow().isoformat()
+            "last_ai_enrichment": datetime.datetime.now(datetime.UTC).isoformat()
         }
     )
 
@@ -135,7 +134,7 @@ def import_assets(assets: List[schemas.AssetImport], db: Session = Depends(get_d
 
 
                 if existing_asset:
-                    existing_asset.last_seen = datetime.datetime.utcnow()
+                    existing_asset.last_seen = datetime.datetime.now(datetime.UTC)
                     existing_asset.status = AssetStatus.ACTIVE
 
                     # Merge tags
@@ -158,8 +157,8 @@ def import_assets(assets: List[schemas.AssetImport], db: Session = Depends(get_d
                         type=asset_data.type,
                         value=asset_data.value,
                         status=asset_data.status,
-                        first_seen=datetime.datetime.utcnow(),
-                        last_seen=datetime.datetime.utcnow(),
+                        first_seen=datetime.datetime.now(datetime.UTC),
+                        last_seen=datetime.datetime.now(datetime.UTC),
                         source=asset_data.source,
                         tags=asset_data.tags,
                         metadata_=asset_data.metadata
