@@ -1,6 +1,6 @@
-# Web Framework
+# Web framework
 fastapi
-uvicorn
+uvicorn[standard]
 
 # Database
 sqlalchemy
@@ -10,7 +10,8 @@ psycopg2-binary
 openai
 langchain
 langchain-core
-langchain-community 
+langchain-community
 langchain-openai
 
+# Config
 python-dotenv

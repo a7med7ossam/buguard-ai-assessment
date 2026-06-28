@@ -1,9 +1,11 @@
-from sqlalchemy import Column, String, DateTime, JSON, ForeignKey, UniqueConstraint, Enum
-from sqlalchemy.ext.mutable import MutableDict
-from database import Base
-from enums import AssetType, AssetStatus, RelationshipType
 import datetime
 import uuid
+
+from sqlalchemy import Column, String, DateTime, JSON, ForeignKey, UniqueConstraint, Enum
+from sqlalchemy.ext.mutable import MutableDict
+
+from app.database import Base
+from app.enums import AssetType, AssetStatus, RelationshipType
 
 
 class Asset(Base):
@@ -13,51 +15,50 @@ class Asset(Base):
         UniqueConstraint("type", "value", name="uq_asset_type_value"),
     )
 
-
     id = Column(String, primary_key=True, index=True)
 
     type = Column(
         Enum(
             AssetType,
             name="asset_type_enum",
-            native_enum=False
+            native_enum=False,
         ),
-        nullable=False
+        nullable=False,
     )
 
-    value = Column(String, nullable=False) 
+    value = Column(String, nullable=False)
 
     status = Column(
         Enum(
             AssetStatus,
             name="asset_status_enum",
-            native_enum=False
+            native_enum=False,
         ),
         default=AssetStatus.ACTIVE,
-        nullable=False
+        nullable=False,
     )
 
     first_seen = Column(DateTime, default=lambda: datetime.datetime.now(datetime.UTC))
     last_seen = Column(DateTime, default=lambda: datetime.datetime.now(datetime.UTC))
     source = Column(String)
-    tags = Column(JSON, default=list) # Storing arrays as JSON is flexible
-    metadata_ = Column("metadata", MutableDict.as_mutable(JSON), default=dict) # Named metadata_ to avoid SQLAlchemy conflicts
-
+    tags = Column(JSON, default=list)  # Storing arrays as JSON is flexible
+    # Named metadata_ to avoid SQLAlchemy's reserved "metadata" attribute.
+    metadata_ = Column("metadata", MutableDict.as_mutable(JSON), default=dict)
 
 
 class Relationship(Base):
     __tablename__ = "relationships"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    
+
     from_asset_id = Column(String, ForeignKey("assets.id"), nullable=False)
     to_asset_id = Column(String, ForeignKey("assets.id"), nullable=False)
-    
+
     type = Column(
         Enum(
             RelationshipType,
             name="relationship_type_enum",
-            native_enum=False
+            native_enum=False,
         ),
-        nullable=False
-    )    
+        nullable=False,
+    )

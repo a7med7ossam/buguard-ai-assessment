@@ -1,4 +1,17 @@
-__pycache__/
-test01.py
+# Secrets
 .env
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# Virtual environments
 .venv/
+venv/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

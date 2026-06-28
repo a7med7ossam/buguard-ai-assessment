@@ -1,4 +1,3 @@
-
 services:
   db:
     image: postgres:15
@@ -12,6 +11,31 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # The app waits for this to pass before it starts, so it never tries to
+    # create tables against a database that isn't accepting connections yet.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: buguard_app
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    # Loads POSTGRES_* and GEMINI_API_KEY into the container.
+    env_file:
+      - .env
+    # Override DATABASE_URL: inside the compose network the database is reached
+    # at host "db" (the service name), NOT localhost. This value wins over the
+    # one in .env, so the same .env works for both local and containerized runs.
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    ports:
+      - "8000:8000"
 
 volumes:
   postgres_data:

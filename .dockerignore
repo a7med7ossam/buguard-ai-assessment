@@ -1,0 +1,17 @@
+# Secrets — never copy real env files into the image
+.env
+
+# Python caches / build artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# Local virtual environments
+.venv/
+venv/
+
+# VCS and editor noise
+.git/
+.gitignore
+.DS_Store
