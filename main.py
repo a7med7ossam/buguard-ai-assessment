@@ -315,6 +315,7 @@ def enrich_asset_endpoint(request: schemas.AnalyzeRequest, db: Session = Depends
         "id": asset.id,
         "type": asset.type,
         "value": asset.value,
+        "status": asset.status,
         "tags": asset.tags,
         "metadata": asset.metadata_
     }
@@ -359,6 +360,8 @@ def generate_inventory_report(db: Session = Depends(get_db)):
             "type": a.type,
             "value": a.value,
             "status": a.status,
+            "tags": a.tags,
+            "metadata": a.metadata_
         }
         for a in assets
     ]
