@@ -195,9 +195,13 @@ Covered:
 
 **Request**
 ```bash
-curl -X POST http://localhost:8000/api/analyze/enrich \
-  -H "Content-Type: application/json" \
-  -d '{"asset_id": "subdomain-1"}'
+curl -X 'POST' \
+  'http://localhost:8000/api/analyze/enrich' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "asset_id": "subdomain-1"
+}'
 ```
 
 **Response**
@@ -219,9 +223,13 @@ asset's metadata (with a `last_ai_enrichment` timestamp).
 
 **Request**
 ```bash
-curl -X POST http://localhost:8000/api/analyze/risk \
-  -H "Content-Type: application/json" \
-  -d '{"asset_id": "cert-1"}'
+curl -X 'POST' \
+  'http://localhost:8000/api/analyze/risk' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "asset_id": "cert-1"
+}'
 ```
 
 **Response**
@@ -229,9 +237,9 @@ curl -X POST http://localhost:8000/api/analyze/risk \
 {
   "asset_id": "cert-1",
   "risk_assessment": {
-    "risk_score": 8,
-    "risk_level": "High",
-    "summary": "This TLS certificate for api.example.com has expired, leaving the production endpoint it covers without valid certificate coverage. Expired certificates break trust, can cause outages, and are a common indicator of unmanaged assets. Renew or rotate the certificate immediately."
+    "risk_score": 10,
+    "risk_level": "Critical",
+    "summary": "The certificate for api.example.com is expired (expired 542 days ago). As a high-criticality production web server asset, this poses a severe risk of service interruption, man-in-the-middle attacks, and loss of trust for users."
   }
 }
 ```
@@ -243,18 +251,22 @@ the date.
 
 **Request**
 ```bash
-curl -X POST http://localhost:8000/api/analyze/query \
-  -H "Content-Type: application/json" \
-  -d '{"query": "list all certificate assets and their values"}'
+curl -X 'POST' \
+  'http://localhost:8000/api/analyze/query' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "query": "Show me all active domains"
+}'
 ```
 
 **Response**
 ```json
 {
-  "query": "list all certificate assets and their values",
+  "query": "Show me all active domains",
   "success": true,
-  "sql": "SELECT id, value FROM assets WHERE type = 'certificate'",
-  "result": "[('cert-1', 'CN=api.example.com')]"
+  "sql": "SELECT * FROM assets WHERE type = 'DOMAIN' AND status = 'ACTIVE';",
+  "result": "[('domain-1', 'DOMAIN', 'example.com', 'ACTIVE', datetime.datetime(2026, 6, 28, 18, 6, 40, 525071), datetime.datetime(2026, 6, 28, 18, 6, 40, 525074), 'scan', ['root'], {})]"
 }
 ```
 
