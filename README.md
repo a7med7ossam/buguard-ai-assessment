@@ -302,31 +302,48 @@ curl -X POST http://localhost:8000/api/analyze/query \
 
 **Request**
 ```bash
-curl http://localhost:8000/api/analyze/report
+curl -X 'GET' \
+  'http://localhost:8000/api/analyze/report' \
+  -H 'accept: */*'
 ```
 
 **Response** (`text/markdown`, abridged)
 ```markdown
 # Attack Surface Management Report
+**Date:** 2026-06-28
 
-## Inventory Overview
-- 7 assets across 5 types: 1 domain, 1 subdomain, 1 IP address, 2 services,
-  1 certificate, 1 technology.
+## Executive Summary
+This report provides an overview of the current digital attack surface based on the provided inventory. The inventory consists of 7 tracked assets.
+
+## Asset Distribution
+The inventory is categorized as follows:
+* **Domains/Subdomains:** 2 (example.com, api.example.com)
+* **Network Infrastructure:** 1 (203.0.113.10)
+* **Services:** 2 (443/tcp, 80/tcp)
+* **Technology:** 1 (Nginx 1.25)
+* **Certificates:** 1 (CN=api.example.com)
 
 ## Exposed Services
-- 443/tcp (nginx) and 80/tcp on 203.0.113.10.
+The following services are currently active and exposed:
+* **443/tcp:** Running Nginx 1.25.
+* **80/tcp:** Unencrypted HTTP traffic.
 
-## Certificates
-- cert-1 (CN=api.example.com) is **expired** (expired 2025-01-02) and covers the
-  production subdomain api.example.com.
+## Expired or Expiring Certificates
+* **CN=api.example.com:** This certificate expired on **2025-01-02**. Despite being marked as "high" criticality and "prod" environment, it is currently invalid.
+
+## Stale Assets
+* No assets were explicitly flagged as stale; however, the expired certificate indicates a failure in lifecycle management for the production API.
 
 ## Notable Risks
-1. Expired certificate on a production-facing subdomain.
-2. Plaintext HTTP service (80/tcp) exposed alongside HTTPS.
+* **Expired Production Certificate:** The API certificate is over 17 months past its expiration date, posing a significant risk to encrypted communication integrity and service trust.
+* **Unencrypted Traffic:** The presence of port 80/tcp suggests that traffic may be served over HTTP, which is susceptible to interception.
+* **Outdated Technology:** Nginx 1.25 is currently in use; security teams should verify if this version contains known vulnerabilities or requires patching.
 
 ## Recommendations
-1. Renew or rotate cert-1 immediately.
-2. Confirm 80/tcp redirects to HTTPS or retire it.
+1. **Immediate Certificate Remediation:** Renew the certificate for `api.example.com` immediately to restore secure communication and compliance.
+2. **Enforce HTTPS:** Configure the web server to redirect all traffic from 80/tcp to 443/tcp and disable non-essential HTTP services.
+3. **Patch Management:** Review the Nginx 1.25 deployment against current security advisories and upgrade to the latest stable version if applicable.
+4. **Lifecycle Automation:** Implement automated certificate monitoring and renewal alerts to prevent future expiration of high-criticality assets.
 ```
 
 ---
