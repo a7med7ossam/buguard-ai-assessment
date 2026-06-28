@@ -334,9 +334,7 @@ curl http://localhost:8000/api/analyze/report
 
 ## 9. What I'd do next
 
-- Persist a typed `Relationship` create/read API and graph traversal beyond one hop.
-- Move table creation to Alembic migrations.
-- Add API-key auth on write operations and multi-tenant scoping (org isolation).
+- Enhance the response format for the qurey endpoint to be more readable
 - Turn the analysis layer into an agent that calls the API as tools, and add an
   output-quality evaluation harness.
 - Cache enrichment/risk results to cut LLM calls on unchanged assets.
